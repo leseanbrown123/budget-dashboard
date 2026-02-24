@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Budget Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>Monthly Budget Dashboard</h1>
+        <p class="subtitle">Upload your credit card statements, set your goals, and get personalized budgeting insights.</p>
+    </header>
+
+    <main>
+        <!-- Step 1: Upload -->
+        <section class="card" id="upload-section">
+            <h2>1. Upload Credit Card Statement</h2>
+            <p class="hint">Upload a CSV file with columns for Date, Description, and Amount.</p>
+            <div class="upload-area" id="drop-zone">
+                <input type="file" id="file-input" accept=".csv" hidden>
+                <p>Drag &amp; drop a CSV file here, or <button class="link-btn" onclick="document.getElementById('file-input').click()">browse</button></p>
+            </div>
+            <div id="upload-status" class="status-msg" hidden></div>
+            <div class="upload-actions">
+                <button id="clear-btn" class="btn btn-secondary" onclick="clearData()" hidden>Clear All Data</button>
+            </div>
+        </section>
+
+        <!-- Step 2: Income & Goals -->
+        <section class="card" id="goals-section">
+            <h2>2. Set Income &amp; Goals</h2>
+            <div class="form-row">
+                <label for="income-input">Monthly Take-Home Income ($)</label>
+                <input type="number" id="income-input" placeholder="e.g. 5000" min="0" step="100">
+            </div>
+            <div class="form-row">
+                <label for="goals-input">Financial Goals (one per line)</label>
+                <textarea id="goals-input" rows="4" placeholder="e.g.&#10;Save for emergency fund&#10;Pay off credit card debt&#10;Save for house down payment&#10;Retirement savings"></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="runAnalysis()">Analyze My Budget</button>
+        </section>
+
+        <!-- Results -->
+        <section class="card" id="results-section" hidden>
+            <h2>Budget Overview</h2>
+
+            <!-- Summary Cards -->
+            <div class="summary-row" id="summary-cards"></div>
+
+            <!-- Charts Row -->
+            <div class="charts-row">
+                <div class="chart-container">
+                    <h3>Spending by Category</h3>
+                    <canvas id="category-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Needs / Wants / Savings</h3>
+                    <canvas id="bucket-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Category Breakdown Table -->
+            <div class="table-section">
+                <h3>Category Breakdown</h3>
+                <table id="category-table">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Amount</th>
+                            <th>% of Income</th>
+                            <th>Guideline</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Recommendations -->
+            <div class="recommendations-section">
+                <h3>Recommendations</h3>
+                <div id="recommendations-list"></div>
+            </div>
+
+            <!-- Goal Recommendations -->
+            <div class="recommendations-section" id="goal-recs-section" hidden>
+                <h3>Goal-Specific Advice</h3>
+                <div id="goal-recommendations-list"></div>
+            </div>
+
+            <!-- Flagged Purchases -->
+            <div class="flagged-section" id="flagged-section" hidden>
+                <h3>Flagged Major Purchases (over $200)</h3>
+                <table id="flagged-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th>Category</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- All Transactions -->
+        <section class="card" id="transactions-section" hidden>
+            <h2>All Transactions</h2>
+            <p class="hint">Click a category to change it.</p>
+            <table id="transactions-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Amount</th>
+                        <th>Category</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer>
+        <p>Budget Dashboard &mdash; Based on the 50/30/20 budgeting rule and standard personal finance guidelines.</p>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
