@@ -18,6 +18,7 @@ BASELINE_ALLOCATIONS = {
         "target_pct": 30,
         "categories": [
             "Dining",
+            "Food Delivery",
             "Shopping",
             "Entertainment",
             "Subscriptions",
@@ -35,6 +36,7 @@ BASELINE_ALLOCATIONS = {
 CATEGORY_GUIDELINES = {
     "Groceries": {"max_pct": 12, "tip": "Meal planning and buying in bulk can cut grocery costs by 20-30%."},
     "Dining": {"max_pct": 8, "tip": "Limiting dining out to 2-3 times per week can save significantly."},
+    "Food Delivery": {"max_pct": 4, "tip": "Delivery fees and markups add 30-50% to meal costs. Consider cooking or pickup instead."},
     "Transportation": {"max_pct": 10, "tip": "Consider carpooling or public transit to reduce costs."},
     "Shopping": {"max_pct": 5, "tip": "Use a 48-hour rule: wait 2 days before non-essential purchases."},
     "Entertainment": {"max_pct": 5, "tip": "Look for free local events and use library resources."},

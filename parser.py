@@ -5,6 +5,14 @@ import io
 import re
 from datetime import datetime
 
+# Descriptions that represent payments (not expenses) and should be excluded
+PAYMENT_KEYWORDS = [
+    "mobile payment - thank you",
+    "payment thank you",
+    "online payment thank you",
+    "autopay payment - thank you",
+]
+
 # Keyword-to-category mapping for auto-categorization
 CATEGORY_KEYWORDS = {
     "Groceries": [
@@ -13,11 +21,16 @@ CATEGORY_KEYWORDS = {
         "wegmans", "heb", "sprouts", "food lion", "giant", "meijer",
         "market basket", "stop & shop", "albertsons", "piggly wiggly",
     ],
+    "Food Delivery": [
+        "uber eats", "ubereats", "doordash", "door dash", "grubhub",
+        "postmates", "seamless", "instacart", "gopuff", "caviar",
+        "delivery.com", "eat24", "bite squad", "waitr", "favor delivery",
+    ],
     "Dining": [
         "restaurant", "mcdonald", "starbucks", "chipotle", "subway",
         "domino", "pizza", "burger", "taco bell", "chick-fil-a",
-        "wendy", "dunkin", "panera", "grubhub", "doordash", "uber eats",
-        "postmates", "seamless", "cafe", "diner", "grill", "sushi",
+        "wendy", "dunkin", "panera",
+        "cafe", "diner", "grill", "sushi",
         "thai", "chinese", "mexican", "italian", "bar ", "pub ",
         "brewhouse", "coffee", "bakery", "deli",
     ],
@@ -203,6 +216,11 @@ def parse_statement(file_content, filename=""):
         amount = parse_amount(row[amount_col])
 
         if amount is None or not description:
+            continue
+
+        # Skip payment transactions (not actual expenses)
+        desc_lower = description.lower()
+        if any(kw in desc_lower for kw in PAYMENT_KEYWORDS):
             continue
 
         # Use provided category or auto-detect

@@ -190,6 +190,28 @@ main {
     resize: vertical;
 }
 
+/* ===== Month Picker ===== */
+.month-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.month-picker label {
+    font-weight: 600;
+}
+
+.month-picker select {
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    background: white;
+    cursor: pointer;
+}
+
 /* ===== Summary Cards ===== */
 .summary-row {
     display: grid;

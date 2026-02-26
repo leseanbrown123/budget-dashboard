@@ -46,6 +46,14 @@
         <section class="card" id="results-section" hidden>
             <h2>Budget Overview</h2>
 
+            <!-- Month Picker -->
+            <div class="month-picker" id="month-picker" hidden>
+                <label for="month-select">Viewing month:</label>
+                <select id="month-select" onchange="switchMonth(this.value)">
+                    <option value="all">All Months</option>
+                </select>
+            </div>
+
             <!-- Summary Cards -->
             <div class="summary-row" id="summary-cards"></div>
 

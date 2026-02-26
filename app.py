@@ -73,6 +73,7 @@ def analyze():
 
     income = data.get("income", 0)
     goals = data.get("goals", [])
+    month = data.get("month")  # Optional: "YYYY-MM" or "all"
 
     try:
         income = float(income)
@@ -88,7 +89,23 @@ def analyze():
     _store["income"] = income
     _store["goals"] = goals
 
-    result = generate_recommendations(_store["transactions"], income, goals)
+    # Collect available months from all transactions
+    available_months = sorted(set(
+        t["date"][:7] for t in _store["transactions"] if t.get("date") and len(t["date"]) >= 7
+    ))
+
+    # Filter transactions by month if specified
+    if month and month != "all":
+        filtered = [t for t in _store["transactions"] if t.get("date", "").startswith(month)]
+    else:
+        filtered = _store["transactions"]
+
+    if not filtered:
+        return jsonify({"error": f"No transactions found for {month}."}), 400
+
+    result = generate_recommendations(filtered, income, goals)
+    result["available_months"] = available_months
+    result["selected_month"] = month or "all"
     return jsonify(result)
 
 

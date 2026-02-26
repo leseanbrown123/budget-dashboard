@@ -1,14 +1,15 @@
 /* ===== Budget Dashboard Frontend ===== */
 
 const CATEGORIES = [
-    "Groceries", "Dining", "Transportation", "Shopping", "Entertainment",
-    "Utilities", "Healthcare", "Travel", "Subscriptions", "Education",
-    "Personal Care", "Home", "Insurance", "Other"
+    "Groceries", "Dining", "Food Delivery", "Transportation", "Shopping",
+    "Entertainment", "Utilities", "Healthcare", "Travel", "Subscriptions",
+    "Education", "Personal Care", "Home", "Insurance", "Other"
 ];
 
 const CATEGORY_COLORS = {
     "Groceries": "#00b894",
     "Dining": "#e17055",
+    "Food Delivery": "#ff7675",
     "Transportation": "#0984e3",
     "Shopping": "#6c5ce7",
     "Entertainment": "#fdcb6e",
@@ -32,6 +33,7 @@ const REC_ICONS = {
 
 let categoryChart = null;
 let bucketChart = null;
+let lastAnalysisParams = null;
 
 /* ===== File Upload ===== */
 
@@ -146,7 +148,7 @@ async function updateCategory(select) {
 
 /* ===== Analysis ===== */
 
-async function runAnalysis() {
+async function runAnalysis(month) {
     const income = document.getElementById("income-input").value;
     const goalsText = document.getElementById("goals-input").value;
 
@@ -160,11 +162,15 @@ async function runAnalysis() {
         .map(g => g.trim())
         .filter(g => g.length > 0);
 
+    const selectedMonth = month || "all";
+
+    lastAnalysisParams = { income: parseFloat(income), goals };
+
     try {
         const res = await fetch("/analyze", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ income: parseFloat(income), goals }),
+            body: JSON.stringify({ income: parseFloat(income), goals, month: selectedMonth }),
         });
         const data = await res.json();
 
@@ -178,10 +184,31 @@ async function runAnalysis() {
     }
 }
 
+async function switchMonth(month) {
+    if (!lastAnalysisParams) return;
+    await runAnalysis(month);
+}
+
 function renderResults(data) {
     const section = document.getElementById("results-section");
     section.hidden = false;
     section.scrollIntoView({ behavior: "smooth" });
+
+    // Month picker
+    const monthPicker = document.getElementById("month-picker");
+    if (data.available_months && data.available_months.length > 0) {
+        monthPicker.hidden = false;
+        const monthSelect = document.getElementById("month-select");
+        const currentValue = data.selected_month || "all";
+        monthSelect.innerHTML = `<option value="all" ${currentValue === "all" ? "selected" : ""}>All Months</option>`;
+        data.available_months.forEach(m => {
+            const [year, mo] = m.split("-");
+            const label = new Date(year, parseInt(mo) - 1).toLocaleString("default", { month: "long", year: "numeric" });
+            monthSelect.innerHTML += `<option value="${m}" ${currentValue === m ? "selected" : ""}>${label}</option>`;
+        });
+    } else {
+        monthPicker.hidden = true;
+    }
 
     // Summary cards
     const summaryRow = document.getElementById("summary-cards");
