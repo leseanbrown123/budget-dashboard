@@ -32,7 +32,7 @@ CATEGORY_KEYWORDS = {
         "wendy", "dunkin", "panera",
         "cafe", "diner", "grill", "sushi",
         "thai", "chinese", "mexican", "italian", "bar ", "pub ",
-        "brewhouse", "coffee", "bakery", "deli",
+        "brewhouse", "coffee", "bakery", "deli", "bon appetit",
     ],
     "Transportation": [
         "gas", "shell", "chevron", "exxon", "bp ", "mobil", "sunoco",
