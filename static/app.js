@@ -55,41 +55,65 @@ dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
     dropZone.classList.remove("drag-over");
     const files = e.dataTransfer.files;
-    if (files.length > 0) uploadFile(files[0]);
+    if (files.length > 0) uploadFiles(files);
 });
 
 fileInput.addEventListener("change", () => {
-    if (fileInput.files.length > 0) uploadFile(fileInput.files[0]);
+    if (fileInput.files.length > 0) uploadFiles(fileInput.files);
 });
 
-async function uploadFile(file) {
+async function uploadFiles(fileList) {
     const status = document.getElementById("upload-status");
+    const files = Array.from(fileList);
+    const total = files.length;
+    let successCount = 0;
+    let errorMessages = [];
+    let lastData = null;
+
     status.hidden = false;
     status.className = "status-msg";
-    status.textContent = `Uploading ${file.name}...`;
+    status.textContent = `Uploading ${total} file${total > 1 ? "s" : ""}...`;
 
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-        const res = await fetch("/upload", { method: "POST", body: formData });
-        const data = await res.json();
-
-        if (res.ok) {
-            status.className = "status-msg success";
-            status.textContent = `${data.message}. Total transactions: ${data.total_count}`;
-            document.getElementById("clear-btn").hidden = false;
-            renderTransactions(data.transactions);
-        } else {
-            status.className = "status-msg error";
-            status.textContent = data.error || "Upload failed";
+    for (const file of files) {
+        if (total > 1) {
+            status.textContent = `Uploading ${file.name} (${successCount + 1}/${total})...`;
         }
-    } catch (err) {
-        status.className = "status-msg error";
-        status.textContent = "Network error. Is the server running?";
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const res = await fetch("/upload", { method: "POST", body: formData });
+            const data = await res.json();
+
+            if (res.ok) {
+                successCount++;
+                lastData = data;
+            } else {
+                errorMessages.push(`${file.name}: ${data.error || "Upload failed"}`);
+            }
+        } catch (err) {
+            errorMessages.push(`${file.name}: Network error`);
+        }
     }
 
-    // Reset so the same file can be re-uploaded
+    if (successCount > 0 && lastData) {
+        document.getElementById("clear-btn").hidden = false;
+        renderTransactions(lastData.transactions);
+    }
+
+    if (errorMessages.length === 0) {
+        status.className = "status-msg success";
+        status.textContent = `Uploaded ${successCount} file${successCount > 1 ? "s" : ""}. Total transactions: ${lastData.total_count}`;
+    } else if (successCount > 0) {
+        status.className = "status-msg warning";
+        status.textContent = `Uploaded ${successCount}/${total} files (${lastData.total_count} transactions). Errors: ${errorMessages.join("; ")}`;
+    } else {
+        status.className = "status-msg error";
+        status.textContent = errorMessages.join("; ");
+    }
+
+    // Reset so the same files can be re-uploaded
     fileInput.value = "";
 }
 

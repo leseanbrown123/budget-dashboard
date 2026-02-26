@@ -19,8 +19,8 @@
             <h2>1. Upload Credit Card Statement</h2>
             <p class="hint">Upload a CSV file with columns for Date, Description, and Amount.</p>
             <div class="upload-area" id="drop-zone">
-                <input type="file" id="file-input" accept=".csv" hidden>
-                <p>Drag &amp; drop a CSV file here, or <button class="link-btn" onclick="document.getElementById('file-input').click()">browse</button></p>
+                <input type="file" id="file-input" accept=".csv" multiple hidden>
+                <p>Drag &amp; drop CSV files here, or <button class="link-btn" onclick="document.getElementById('file-input').click()">browse</button></p>
             </div>
             <div id="upload-status" class="status-msg" hidden></div>
             <div class="upload-actions">

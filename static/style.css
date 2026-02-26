@@ -124,6 +124,11 @@ main {
     color: #721c24;
 }
 
+.status-msg.warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
 /* ===== Buttons ===== */
 .btn {
     padding: 0.6rem 1.25rem;
