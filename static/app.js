@@ -34,6 +34,7 @@ const REC_ICONS = {
 let categoryChart = null;
 let bucketChart = null;
 let lastAnalysisParams = null;
+let allTransactions = [];
 
 /* ===== File Upload ===== */
 
@@ -123,17 +124,47 @@ async function clearData() {
     document.getElementById("clear-btn").hidden = true;
     document.getElementById("transactions-section").hidden = true;
     document.getElementById("results-section").hidden = true;
+    document.getElementById("transactions-month-select").value = "all";
+    allTransactions = [];
 }
 
 /* ===== Transactions Table ===== */
 
 function renderTransactions(transactions) {
+    allTransactions = transactions;
+
+    // Populate month filter dropdown
+    const months = [...new Set(
+        transactions
+            .filter(t => t.date && t.date.length >= 7)
+            .map(t => t.date.substring(0, 7))
+    )].sort();
+
+    const monthSelect = document.getElementById("transactions-month-select");
+    const currentValue = monthSelect.value || "all";
+    monthSelect.innerHTML = `<option value="all">All Months</option>`;
+    months.forEach(m => {
+        const [year, mo] = m.split("-");
+        const label = new Date(year, parseInt(mo) - 1).toLocaleString("default", { month: "long", year: "numeric" });
+        monthSelect.innerHTML += `<option value="${m}" ${currentValue === m ? "selected" : ""}>${label}</option>`;
+    });
+
+    filterTransactionsByMonth(currentValue);
+}
+
+function filterTransactionsByMonth(month) {
     const section = document.getElementById("transactions-section");
     section.hidden = false;
     const tbody = section.querySelector("tbody");
     tbody.innerHTML = "";
 
-    transactions.forEach((t, i) => {
+    const filtered = month === "all"
+        ? allTransactions
+        : allTransactions.filter(t => t.date && t.date.startsWith(month));
+
+    filtered.forEach((t) => {
+        // Find the original index in allTransactions for category updates
+        const originalIndex = allTransactions.indexOf(t);
         const tr = document.createElement("tr");
         if (t.flagged) tr.style.background = "#fff3e0";
 
@@ -144,7 +175,7 @@ function renderTransactions(transactions) {
             <td>${escapeHtml(t.description)}${flagMarker}</td>
             <td class="amount">$${t.amount.toFixed(2)}</td>
             <td>
-                <select class="category-select" data-index="${i}" onchange="updateCategory(this)">
+                <select class="category-select" data-index="${originalIndex}" onchange="updateCategory(this)">
                     ${CATEGORIES.map(c =>
                         `<option value="${c}" ${c === t.category ? "selected" : ""}>${c}</option>`
                     ).join("")}

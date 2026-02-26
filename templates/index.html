@@ -117,8 +117,18 @@
 
         <!-- All Transactions -->
         <section class="card" id="transactions-section" hidden>
-            <h2>All Transactions</h2>
-            <p class="hint">Click a category to change it.</p>
+            <div class="transactions-header">
+                <div>
+                    <h2>All Transactions</h2>
+                    <p class="hint">Click a category to change it.</p>
+                </div>
+                <div class="month-picker" id="transactions-month-picker">
+                    <label for="transactions-month-select">Filter:</label>
+                    <select id="transactions-month-select" onchange="filterTransactionsByMonth(this.value)">
+                        <option value="all">All Months</option>
+                    </select>
+                </div>
+            </div>
             <table id="transactions-table">
                 <thead>
                     <tr>
