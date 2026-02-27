@@ -41,7 +41,11 @@ let allTransactions = [];
 const dropZone = document.getElementById("drop-zone");
 const fileInput = document.getElementById("file-input");
 
-dropZone.addEventListener("click", () => fileInput.click());
+dropZone.addEventListener("click", (e) => {
+    // Avoid double-triggering if the click came from the file input or browse button
+    if (e.target === fileInput || e.target.closest(".link-btn")) return;
+    fileInput.click();
+});
 
 dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
