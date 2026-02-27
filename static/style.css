@@ -397,6 +397,26 @@ td:nth-child(3) {
     font-weight: bold;
 }
 
+/* ===== Trend Indicators ===== */
+.trend-up {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.trend-down {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.trend-flat {
+    color: var(--text-muted);
+}
+
+.trend-arrow {
+    font-size: 1rem;
+    margin-right: 0.15rem;
+}
+
 /* ===== Footer ===== */
 footer {
     text-align: center;

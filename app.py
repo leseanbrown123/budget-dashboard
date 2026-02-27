@@ -5,7 +5,7 @@ import os
 from flask import Flask, render_template, request, jsonify, session
 
 from parser import parse_statement
-from recommender import generate_recommendations
+from recommender import generate_recommendations, generate_trends
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
@@ -106,6 +106,34 @@ def analyze():
     result = generate_recommendations(filtered, income, goals)
     result["available_months"] = available_months
     result["selected_month"] = month or "all"
+    return jsonify(result)
+
+
+@app.route("/trends", methods=["POST"])
+def trends():
+    """Return month-over-month spending trends and alerts."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    income = data.get("income", 0)
+    goals = data.get("goals", [])
+
+    try:
+        income = float(income)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Income must be a number"}), 400
+
+    if income <= 0:
+        return jsonify({"error": "Please enter a positive monthly income"}), 400
+
+    if not _store["transactions"]:
+        return jsonify({"error": "No transactions uploaded yet."}), 400
+
+    result = generate_trends(_store["transactions"], income, goals)
+    if result is None:
+        return jsonify({"error": "Need at least 2 months of data to show trends."}), 400
+
     return jsonify(result)
 
 

@@ -287,3 +287,199 @@ def generate_recommendations(transactions, monthly_income, goals=None):
         "goal_recommendations": goal_recommendations,
         "flagged_purchases": flagged,
     }
+
+
+# Thresholds for trend alerts
+SIGNIFICANT_INCREASE_PCT = 25  # flag if category spending rises more than 25%
+SIGNIFICANT_INCREASE_ABS = 50  # ... and by at least $50
+
+
+def generate_trends(transactions, monthly_income, goals=None):
+    """Analyze month-over-month spending trends and flag anomalies.
+
+    Args:
+        transactions: Full list of transaction dicts (all months).
+        monthly_income: User's monthly take-home income.
+        goals: Optional list of goal strings.
+
+    Returns:
+        Dict with monthly totals, per-category trends, and alert cards.
+    """
+    # Group transactions by month
+    by_month = {}
+    for t in transactions:
+        month = t.get("date", "")[:7]
+        if len(month) != 7:
+            continue
+        by_month.setdefault(month, []).append(t)
+
+    months = sorted(by_month.keys())
+    if len(months) < 2:
+        return None  # Need at least 2 months for trends
+
+    # Build per-category monthly spending matrix
+    all_cats = set()
+    monthly_category = {}  # {month: {category: amount}}
+    monthly_totals = {}
+    for month in months:
+        cat_totals = {}
+        for t in by_month[month]:
+            cat = t["category"]
+            cat_totals[cat] = cat_totals.get(cat, 0) + t["amount"]
+            all_cats.add(cat)
+        monthly_category[month] = cat_totals
+        monthly_totals[month] = round(sum(cat_totals.values()), 2)
+
+    # Sort categories by overall spending (descending) for chart readability
+    overall_cat_totals = {}
+    for month_cats in monthly_category.values():
+        for cat, amt in month_cats.items():
+            overall_cat_totals[cat] = overall_cat_totals.get(cat, 0) + amt
+    sorted_cats = sorted(all_cats, key=lambda c: overall_cat_totals.get(c, 0), reverse=True)
+
+    # Build category_trends: {category: {amounts: [...], change_pct, change_amount}}
+    category_trends = {}
+    for cat in sorted_cats:
+        amounts = [round(monthly_category[m].get(cat, 0), 2) for m in months]
+        prev = amounts[-2]
+        curr = amounts[-1]
+        change_amount = round(curr - prev, 2)
+        change_pct = round(((curr - prev) / prev) * 100, 1) if prev > 0 else (100.0 if curr > 0 else 0)
+        category_trends[cat] = {
+            "amounts": amounts,
+            "change_pct": change_pct,
+            "change_amount": change_amount,
+        }
+
+    # Total spending trend
+    total_amounts = [monthly_totals[m] for m in months]
+    prev_total = total_amounts[-2]
+    curr_total = total_amounts[-1]
+    total_change_pct = round(((curr_total - prev_total) / prev_total) * 100, 1) if prev_total > 0 else 0
+
+    # Generate trend alerts
+    alerts = []
+    prev_month_label = _month_label(months[-2])
+    curr_month_label = _month_label(months[-1])
+
+    # Check each category for significant increases
+    for cat in sorted_cats:
+        trend = category_trends[cat]
+        if (trend["change_pct"] >= SIGNIFICANT_INCREASE_PCT
+                and trend["change_amount"] >= SIGNIFICANT_INCREASE_ABS):
+            prev_amt = trend["amounts"][-2]
+            curr_amt = trend["amounts"][-1]
+
+            # Check if this conflicts with any user goals
+            goal_conflict = _find_goal_conflict(cat, goals) if goals else None
+            detail = (
+                f"{cat} increased {trend['change_pct']}% from {prev_month_label} to "
+                f"{curr_month_label} (${prev_amt:,.2f} to ${curr_amt:,.2f}, "
+                f"+${trend['change_amount']:,.2f})."
+            )
+            if goal_conflict:
+                detail += f" This trend conflicts with your goal: \"{goal_conflict}\"."
+
+            # Check guideline
+            guideline = CATEGORY_GUIDELINES.get(cat)
+            pct_of_income = round((curr_amt / monthly_income) * 100, 1) if monthly_income > 0 else 0
+            if guideline and pct_of_income > guideline["max_pct"]:
+                detail += (
+                    f" At {pct_of_income}% of income, this now exceeds the "
+                    f"{guideline['max_pct']}% guideline."
+                )
+
+            alert_type = "danger" if (trend["change_pct"] >= 50 or goal_conflict) else "warning"
+            alerts.append({
+                "type": alert_type,
+                "category": cat,
+                "title": f"{cat} spending {'surged' if trend['change_pct'] >= 50 else 'increased significantly'}",
+                "detail": detail,
+            })
+
+    # Check for significant decreases (positive reinforcement)
+    for cat in sorted_cats:
+        trend = category_trends[cat]
+        if (trend["change_pct"] <= -SIGNIFICANT_INCREASE_PCT
+                and trend["change_amount"] <= -SIGNIFICANT_INCREASE_ABS):
+            prev_amt = trend["amounts"][-2]
+            curr_amt = trend["amounts"][-1]
+            alerts.append({
+                "type": "success",
+                "category": cat,
+                "title": f"{cat} spending decreased",
+                "detail": (
+                    f"{cat} decreased {abs(trend['change_pct'])}% from {prev_month_label} "
+                    f"to {curr_month_label} (${prev_amt:,.2f} to ${curr_amt:,.2f}, "
+                    f"saving ${abs(trend['change_amount']):,.2f})."
+                ),
+            })
+
+    # Overall spending trend alert
+    if total_change_pct >= 15:
+        alerts.insert(0, {
+            "type": "danger" if total_change_pct >= 30 else "warning",
+            "category": "Overall",
+            "title": "Total spending is trending up",
+            "detail": (
+                f"Overall spending increased {total_change_pct}% from {prev_month_label} "
+                f"to {curr_month_label} (${prev_total:,.2f} to ${curr_total:,.2f})."
+            ),
+        })
+    elif total_change_pct <= -10:
+        alerts.insert(0, {
+            "type": "success",
+            "category": "Overall",
+            "title": "Total spending is trending down",
+            "detail": (
+                f"Overall spending decreased {abs(total_change_pct)}% from {prev_month_label} "
+                f"to {curr_month_label} (${prev_total:,.2f} to ${curr_total:,.2f})."
+            ),
+        })
+
+    return {
+        "months": months,
+        "month_labels": [_month_label(m) for m in months],
+        "total_amounts": total_amounts,
+        "total_change_pct": total_change_pct,
+        "category_trends": category_trends,
+        "sorted_categories": sorted_cats,
+        "alerts": alerts,
+    }
+
+
+def _month_label(month_str):
+    """Convert 'YYYY-MM' to a readable label like 'Jan 2024'."""
+    try:
+        year, mo = month_str.split("-")
+        names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        return f"{names[int(mo) - 1]} {year}"
+    except (ValueError, IndexError):
+        return month_str
+
+
+def _find_goal_conflict(category, goals):
+    """Check if a spending increase in a category conflicts with user goals."""
+    if not goals:
+        return None
+
+    cat_lower = category.lower()
+    # Map categories to goal keywords they might conflict with
+    conflict_map = {
+        "food delivery": ["save", "saving", "debt", "pay off", "budget", "cut", "reduce", "frugal"],
+        "dining": ["save", "saving", "debt", "pay off", "budget", "cut", "reduce", "frugal", "cook"],
+        "shopping": ["save", "saving", "debt", "pay off", "budget", "minimalis", "less"],
+        "entertainment": ["save", "saving", "debt", "pay off", "budget", "cut"],
+        "subscriptions": ["save", "saving", "debt", "pay off", "cancel", "cut"],
+        "travel": ["save", "saving", "debt", "pay off", "emergency"],
+        "personal care": ["save", "saving", "debt", "budget"],
+    }
+
+    conflict_keywords = conflict_map.get(cat_lower, ["save", "saving", "debt", "pay off", "budget"])
+    for goal in goals:
+        goal_lower = goal.lower()
+        if any(kw in goal_lower for kw in conflict_keywords):
+            return goal
+
+    return None

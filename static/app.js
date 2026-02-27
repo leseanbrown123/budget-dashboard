@@ -33,6 +33,8 @@ const REC_ICONS = {
 
 let categoryChart = null;
 let bucketChart = null;
+let trendChart = null;
+let totalTrendChart = null;
 let lastAnalysisParams = null;
 let allTransactions = [];
 
@@ -128,6 +130,7 @@ async function clearData() {
     document.getElementById("clear-btn").hidden = true;
     document.getElementById("transactions-section").hidden = true;
     document.getElementById("results-section").hidden = true;
+    document.getElementById("trends-section").hidden = true;
     document.getElementById("transactions-month-select").value = "all";
     allTransactions = [];
 }
@@ -235,6 +238,7 @@ async function runAnalysis(month) {
 
         if (res.ok) {
             renderResults(data);
+            fetchTrends(parseFloat(income), goals);
         } else {
             alert(data.error || "Analysis failed");
         }
@@ -473,6 +477,199 @@ function renderFlagged(flagged) {
             <td><span class="flag-icon">[!]</span> ${escapeHtml(t.description)}</td>
             <td class="amount">$${t.amount.toFixed(2)}</td>
             <td>${t.category}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+/* ===== Spending Trends ===== */
+
+async function fetchTrends(income, goals) {
+    const section = document.getElementById("trends-section");
+
+    try {
+        const res = await fetch("/trends", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ income, goals }),
+        });
+
+        if (!res.ok) {
+            section.hidden = true;
+            return;
+        }
+
+        const data = await res.json();
+        section.hidden = false;
+        renderTrends(data);
+    } catch (err) {
+        section.hidden = true;
+    }
+}
+
+function renderTrends(data) {
+    renderTrendAlerts(data.alerts);
+    renderTrendLineChart(data);
+    renderTotalTrendChart(data);
+    renderTrendTable(data);
+}
+
+function renderTrendAlerts(alerts) {
+    const container = document.getElementById("trend-alerts");
+    container.innerHTML = "";
+
+    if (!alerts || alerts.length === 0) {
+        container.innerHTML = '<div class="rec-card success"><span class="rec-icon">\u2705</span><div class="rec-body"><strong>Spending is stable</strong><span>No significant month-over-month changes detected.</span></div></div>';
+        return;
+    }
+
+    alerts.forEach(a => {
+        const div = document.createElement("div");
+        div.className = `rec-card ${a.type}`;
+        div.innerHTML = `
+            <span class="rec-icon">${REC_ICONS[a.type] || ""}</span>
+            <div class="rec-body">
+                <strong>${escapeHtml(a.title)}</strong>
+                <span>${escapeHtml(a.detail)}</span>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function renderTrendLineChart(data) {
+    const ctx = document.getElementById("trend-chart").getContext("2d");
+    if (trendChart) trendChart.destroy();
+
+    // Show top categories (by total spend) to keep chart readable
+    const maxCategories = 8;
+    const categories = data.sorted_categories.slice(0, maxCategories);
+
+    const datasets = categories.map(cat => {
+        const trend = data.category_trends[cat];
+        const color = CATEGORY_COLORS[cat] || "#b2bec3";
+        return {
+            label: cat,
+            data: trend.amounts,
+            borderColor: color,
+            backgroundColor: color + "22",
+            tension: 0.3,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            fill: false,
+        };
+    });
+
+    trendChart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: data.month_labels,
+            datasets,
+        },
+        options: {
+            responsive: true,
+            interaction: { mode: "index", intersect: false },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: "Spending ($)" },
+                    ticks: { callback: v => "$" + v.toLocaleString() },
+                },
+            },
+            plugins: {
+                legend: {
+                    position: "bottom",
+                    labels: { font: { size: 11 }, padding: 12, usePointStyle: true },
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y.toFixed(2)}`,
+                    },
+                },
+            },
+        },
+    });
+}
+
+function renderTotalTrendChart(data) {
+    const ctx = document.getElementById("total-trend-chart").getContext("2d");
+    if (totalTrendChart) totalTrendChart.destroy();
+
+    const colors = data.total_amounts.map((amt, i) => {
+        if (i === 0) return "#0984e3cc";
+        return amt > data.total_amounts[i - 1] ? "#e17055cc" : "#00b894cc";
+    });
+    const borderColors = colors.map(c => c.replace("cc", ""));
+
+    totalTrendChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: data.month_labels,
+            datasets: [{
+                label: "Total Spending",
+                data: data.total_amounts,
+                backgroundColor: colors,
+                borderColor: borderColors,
+                borderWidth: 2,
+            }],
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: "Total ($)" },
+                    ticks: { callback: v => "$" + v.toLocaleString() },
+                },
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` $${ctx.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+                    },
+                },
+            },
+        },
+    });
+}
+
+function renderTrendTable(data) {
+    const tbody = document.querySelector("#trend-table tbody");
+    tbody.innerHTML = "";
+
+    const months = data.months;
+    const prevMonth = months[months.length - 2];
+    const currMonth = months[months.length - 1];
+    const prevLabel = data.month_labels[data.month_labels.length - 2];
+    const currLabel = data.month_labels[data.month_labels.length - 1];
+
+    // Update table header labels
+    const ths = document.querySelectorAll("#trend-table thead th");
+    if (ths.length >= 3) {
+        ths[1].textContent = prevLabel;
+        ths[2].textContent = currLabel;
+    }
+
+    data.sorted_categories.forEach(cat => {
+        const trend = data.category_trends[cat];
+        const prev = trend.amounts[trend.amounts.length - 2];
+        const curr = trend.amounts[trend.amounts.length - 1];
+        const changePct = trend.change_pct;
+        const changeAmt = trend.change_amount;
+
+        if (prev === 0 && curr === 0) return; // skip empty categories
+
+        const tr = document.createElement("tr");
+        const arrow = changeAmt > 0 ? "\u2191" : changeAmt < 0 ? "\u2193" : "\u2192";
+        const trendClass = changeAmt > 0 ? "trend-up" : changeAmt < 0 ? "trend-down" : "trend-flat";
+
+        tr.innerHTML = `
+            <td><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${CATEGORY_COLORS[cat] || '#b2bec3'};margin-right:6px;vertical-align:middle;"></span>${cat}</td>
+            <td class="amount">$${prev.toFixed(2)}</td>
+            <td class="amount">$${curr.toFixed(2)}</td>
+            <td class="amount ${trendClass}">${changeAmt >= 0 ? "+" : ""}$${changeAmt.toFixed(2)}</td>
+            <td class="${trendClass}"><span class="trend-arrow">${arrow}</span> ${changePct >= 0 ? "+" : ""}${changePct}%</td>
         `;
         tbody.appendChild(tr);
     });

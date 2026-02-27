@@ -115,6 +115,44 @@
             </div>
         </section>
 
+        <!-- Spending Trends -->
+        <section class="card" id="trends-section" hidden>
+            <h2>Spending Trends</h2>
+            <p class="hint">Month-over-month changes across your spending categories.</p>
+
+            <!-- Trend Alerts -->
+            <div id="trend-alerts"></div>
+
+            <!-- Trend Line Chart -->
+            <div class="chart-container" id="trend-chart-container">
+                <h3>Monthly Spending by Category</h3>
+                <canvas id="trend-chart"></canvas>
+            </div>
+
+            <!-- Total Spending Trend -->
+            <div class="chart-container" style="margin-top: 1rem;">
+                <h3>Total Monthly Spending</h3>
+                <canvas id="total-trend-chart"></canvas>
+            </div>
+
+            <!-- Month-over-Month Change Table -->
+            <div class="table-section" style="margin-top: 1rem;">
+                <h3>Month-over-Month Changes</h3>
+                <table id="trend-table">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Previous Month</th>
+                            <th>Latest Month</th>
+                            <th>Change</th>
+                            <th>Trend</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
         <!-- All Transactions -->
         <section class="card" id="transactions-section" hidden>
             <div class="transactions-header">
